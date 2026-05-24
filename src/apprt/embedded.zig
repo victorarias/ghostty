@@ -15,6 +15,7 @@ const input = @import("../input.zig");
 const internal_os = @import("../os/main.zig");
 const renderer = @import("../renderer.zig");
 const terminal = @import("../terminal/main.zig");
+const termio = @import("../termio.zig");
 const CoreApp = @import("../App.zig");
 const CoreInspector = @import("../inspector/main.zig").Inspector;
 const CoreSurface = @import("../Surface.zig");
@@ -407,6 +408,25 @@ pub const EnvVar = extern struct {
     value: [*:0]const u8,
 };
 
+pub const SurfaceIOMode = enum(c_int) {
+    exec = 0,
+    external = 1,
+};
+
+pub const SurfaceIOWriteCallback = *const fn (
+    ?*anyopaque,
+    [*]const u8,
+    usize,
+) callconv(.c) void;
+
+pub const SurfaceIOResizeCallback = *const fn (
+    ?*anyopaque,
+    u16,
+    u16,
+    u32,
+    u32,
+) callconv(.c) void;
+
 pub const Surface = struct {
     app: *App,
     platform: Platform,
@@ -462,6 +482,13 @@ pub const Surface = struct {
 
         /// Context for the new surface
         context: apprt.surface.NewSurfaceContext = .window,
+
+        /// IO source for this surface. External surfaces are fed output by
+        /// the embedder and send input through callbacks below.
+        io_mode: SurfaceIOMode = .exec,
+        io_userdata: ?*anyopaque = null,
+        io_write: ?SurfaceIOWriteCallback = null,
+        io_resize: ?SurfaceIOResizeCallback = null,
     };
 
     pub fn init(self: *Surface, app: *App, opts: Options) !void {
@@ -575,6 +602,15 @@ pub const Surface = struct {
             config.@"wait-after-command" = true;
         }
 
+        const io_backend: ?termio.Backend = switch (opts.io_mode) {
+            .exec => null,
+            .external => .{ .external = termio.External.init(.{
+                .userdata = opts.io_userdata,
+                .write = opts.io_write orelse return error.ExternalIOWriteCallbackRequired,
+                .resize = opts.io_resize,
+            }) },
+        };
+
         // Initialize our surface right away. We're given a view that is
         // ready to use.
         try self.core_surface.init(
@@ -583,6 +619,7 @@ pub const Surface = struct {
             app.core_app,
             app,
             self,
+            io_backend,
         );
         errdefer self.core_surface.deinit();
 
@@ -1709,6 +1746,16 @@ pub const CAPI = struct {
             .cell_width_px = surface.core_surface.size.cell.width,
             .cell_height_px = surface.core_surface.size.cell.height,
         };
+    }
+
+    /// Process output from an embedder-owned PTY on an external IO surface.
+    export fn ghostty_surface_process_output(
+        surface: *Surface,
+        ptr: [*]const u8,
+        len: usize,
+    ) void {
+        if (len == 0) return;
+        surface.core_surface.io.processOutput(ptr[0..len]);
     }
 
     /// Returns the PID of the foreground process for the surface PTY.

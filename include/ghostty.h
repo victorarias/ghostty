@@ -464,6 +464,16 @@ typedef enum {
   GHOSTTY_SURFACE_CONTEXT_SPLIT = 2,
 } ghostty_surface_context_e;
 
+typedef enum {
+  GHOSTTY_SURFACE_IO_EXEC = 0,
+  GHOSTTY_SURFACE_IO_EXTERNAL = 1,
+} ghostty_surface_io_mode_e;
+
+// External IO callbacks may be invoked from Ghostty's IO thread.
+typedef void (*ghostty_surface_io_write_cb)(void*, const char*, uintptr_t);
+typedef void (*ghostty_surface_io_resize_cb)(void*, uint16_t, uint16_t,
+                                             uint32_t, uint32_t);
+
 typedef struct {
   ghostty_platform_e platform_tag;
   ghostty_platform_u platform;
@@ -477,6 +487,10 @@ typedef struct {
   const char* initial_input;
   bool wait_after_command;
   ghostty_surface_context_e context;
+  ghostty_surface_io_mode_e io_mode;
+  void* io_userdata;
+  ghostty_surface_io_write_cb io_write;
+  ghostty_surface_io_resize_cb io_resize;
 } ghostty_surface_config_s;
 
 typedef struct {
@@ -1115,6 +1129,8 @@ GHOSTTY_API void ghostty_surface_set_focus(ghostty_surface_t, bool);
 GHOSTTY_API void ghostty_surface_set_occlusion(ghostty_surface_t, bool);
 GHOSTTY_API void ghostty_surface_set_size(ghostty_surface_t, uint32_t, uint32_t);
 GHOSTTY_API ghostty_surface_size_s ghostty_surface_size(ghostty_surface_t);
+GHOSTTY_API void ghostty_surface_process_output(ghostty_surface_t,
+                                                 const char*, uintptr_t);
 GHOSTTY_API uint64_t ghostty_surface_foreground_pid(ghostty_surface_t);
 GHOSTTY_API ghostty_string_s ghostty_surface_tty_name(ghostty_surface_t);
 GHOSTTY_API void ghostty_surface_set_color_scheme(ghostty_surface_t,
