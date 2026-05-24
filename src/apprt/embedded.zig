@@ -1758,6 +1758,25 @@ pub const CAPI = struct {
         surface.core_surface.io.processOutput(ptr[0..len]);
     }
 
+    /// Process historical external PTY output without answering terminal
+    /// queries into the current live PTY.
+    export fn ghostty_surface_process_replay(
+        surface: *Surface,
+        ptr: [*]const u8,
+        len: usize,
+    ) void {
+        if (len == 0) return;
+        surface.core_surface.io.queueMessage(
+            .{ .suppress_external_writes = true },
+            .unlocked,
+        );
+        surface.core_surface.io.processOutput(ptr[0..len]);
+        surface.core_surface.io.queueMessage(
+            .{ .suppress_external_writes = false },
+            .unlocked,
+        );
+    }
+
     /// Returns the PID of the foreground process for the surface PTY.
     export fn ghostty_surface_foreground_pid(surface: *Surface) u64 {
         return surface.core_surface.getProcessInfo(.foreground_pid) orelse 0;

@@ -1131,6 +1131,8 @@ GHOSTTY_API void ghostty_surface_set_size(ghostty_surface_t, uint32_t, uint32_t)
 GHOSTTY_API ghostty_surface_size_s ghostty_surface_size(ghostty_surface_t);
 GHOSTTY_API void ghostty_surface_process_output(ghostty_surface_t,
                                                  const char*, uintptr_t);
+GHOSTTY_API void ghostty_surface_process_replay(ghostty_surface_t,
+                                                 const char*, uintptr_t);
 GHOSTTY_API uint64_t ghostty_surface_foreground_pid(ghostty_surface_t);
 GHOSTTY_API ghostty_string_s ghostty_surface_tty_name(ghostty_surface_t);
 GHOSTTY_API void ghostty_surface_set_color_scheme(ghostty_surface_t,

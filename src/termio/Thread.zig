@@ -83,6 +83,9 @@ flags: packed struct {
 
     /// This is true when the inspector is active.
     has_inspector: bool = false,
+
+    /// True while external output replay must not answer terminal queries.
+    suppress_external_writes: bool = false,
 } = .{},
 
 /// Initialize the thread. This does not START the thread. This only sets
@@ -332,24 +335,27 @@ fn drainMailbox(
             .jump_to_prompt => |v| try io.jumpToPrompt(v),
             .start_synchronized_output => self.startSynchronizedOutput(cb),
             .linefeed_mode => |v| self.flags.linefeed_mode = v,
+            .suppress_external_writes => |v| self.flags.suppress_external_writes = v,
             .focused => |v| try io.focusGained(data, v),
-            .write_small => |v| try io.queueWrite(
+            .write_small => |v| if (!self.flags.suppress_external_writes) try io.queueWrite(
                 data,
                 v.data[0..v.len],
                 self.flags.linefeed_mode,
             ),
-            .write_stable => |v| try io.queueWrite(
+            .write_stable => |v| if (!self.flags.suppress_external_writes) try io.queueWrite(
                 data,
                 v,
                 self.flags.linefeed_mode,
             ),
             .write_alloc => |v| {
                 defer v.alloc.free(v.data);
-                try io.queueWrite(
-                    data,
-                    v.data,
-                    self.flags.linefeed_mode,
-                );
+                if (!self.flags.suppress_external_writes) {
+                    try io.queueWrite(
+                        data,
+                        v.data,
+                        self.flags.linefeed_mode,
+                    );
+                }
             },
         }
     }

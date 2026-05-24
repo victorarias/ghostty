@@ -70,6 +70,9 @@ pub const Message = union(enum) {
     /// Enable or disable linefeed mode (mode 20).
     linefeed_mode: bool,
 
+    /// Suppress writes generated while replaying historical external output.
+    suppress_external_writes: bool,
+
     /// The surface gained or lost focus.
     focused: bool,
 
