@@ -1679,6 +1679,26 @@ pub const CAPI = struct {
         return readTextLocked(surface, core_sel, result);
     }
 
+    /// Read the current working directory reported by shell integration.
+    /// The returned text uses the same ownership contract as read_text.
+    export fn ghostty_surface_read_pwd(
+        surface: *Surface,
+        result: *Text,
+    ) bool {
+        const pwd = (surface.core_surface.pwd(global.alloc) catch return false) orelse return false;
+        defer global.alloc.free(pwd);
+        const text = global.alloc.dupeZ(u8, pwd) catch return false;
+        result.* = .{
+            .tl_px_x = -1,
+            .tl_px_y = -1,
+            .offset_start = 0,
+            .offset_len = 0,
+            .text = text.ptr,
+            .text_len = text.len,
+        };
+        return true;
+    }
+
     fn readTextLocked(
         surface: *Surface,
         core_sel: terminal.Selection,
